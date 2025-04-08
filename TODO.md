@@ -18,17 +18,17 @@
 - [x] Decide on text fields to use
 - [x] Document rationale for text field selection
 
-## Preprocessing [ ]
+## Preprocessing [x]
 - [x] Implement text cleaning functions
 - [x] Create tokenization pipeline
 - [x] Implement stopword removal
 - [x] Implement stemming/lemmatization
-- [ ] Create vectorization functions:
-  - [ ] Binary
-  - [ ] Frequency
-  - [ ] TF-IDF
-- [ ] Build scikit-learn Pipeline
-- [ ] Test preprocessing pipeline
+- [x] Create vectorization functions:
+  - [x] Binary
+  - [x] Frequency
+  - [x] TF-IDF
+- [x] Build scikit-learn Pipeline
+- [x] Test preprocessing pipeline
 
 ## Clustering [ ]
 ### k-means

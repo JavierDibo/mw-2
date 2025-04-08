@@ -32,16 +32,33 @@ Se ha realizado un Análisis Exploratorio de Datos (EDA) sobre el conjunto de da
     - **Análisis de Campos de Texto:** Se analizaron las longitudes de `headline`, `text` y `short_description` (ver `results/text_length_distributions.png`). El campo `text` es el más extenso y contiene la mayor cantidad de información.
 - **Decisión Campo de Texto:** Basado en el análisis y las indicaciones del guion (`guion.md`), se ha decidido utilizar principalmente el campo **`text`** para las tareas de clustering y clasificación.
 
-### 3. Próximos Pasos: Preprocesamiento
+### 3. Preprocesamiento (Completado)
 
-La siguiente fase del proyecto se centrará en el preprocesamiento del campo `text`. Las tareas incluyen:
+Se ha completado la fase de preprocesamiento del campo `text`. Los pasos realizados y los resultados clave se encuentran implementados en el script `src/02_preprocessing.py`:
 
-- Implementar funciones de limpieza de texto (eliminar caracteres especiales, HTML si existiera, etc.).
-- Manejar los valores faltantes encontrados en el campo `text`.
-- Crear un pipeline de tokenización.
-- Implementar la eliminación de *stopwords*.
-- Implementar *stemming* o lematización.
-- Crear funciones de vectorización (Binaria, Frecuencia, TF-IDF).
-- Construir y probar el pipeline completo de preprocesamiento con `scikit-learn`.
+- **Manejo de Valores Faltantes:** Los 41 valores `NaN` en la columna `text` se reemplazaron por strings vacíos.
+- **Limpieza de Texto:** Se aplicó una limpieza básica para convertir a minúsculas, eliminar signos de puntuación y números, y normalizar espacios en blanco.
+- **Tokenización:** El texto limpio se dividió en tokens (palabras) individuales usando `nltk.word_tokenize`.
+- **Eliminación de Stopwords:** Se eliminaron las palabras comunes en inglés (e.g., "the", "is", "in") utilizando la lista de `stopwords` de NLTK.
+- **Stemming:** Se aplicó el algoritmo PorterStemmer (`nltk.stem.PorterStemmer`) para reducir las palabras a su raíz (e.g., "running" -> "run").
+- **Pipelines de Scikit-learn:** Se encapsularon todos los pasos anteriores (limpieza, tokenización, stopwords, stemming) dentro de una función `stemming_tokenizer` personalizada.
+- **Funciones de Vectorización:** Se crearon funciones (`create_binary_pipeline`, `create_frequency_pipeline`, `create_tfidf_pipeline`) que generan `Pipeline` de scikit-learn. Cada pipeline utiliza el `stemming_tokenizer` y aplica la vectorización correspondiente (Binaria, Frecuencia o TF-IDF) para transformar el texto crudo en una representación numérica.
+
+El resultado de esta fase es un conjunto de herramientas reutilizables (los pipelines) que preparan los datos de texto para los algoritmos de machine learning.
+
+### 4. Próximos Pasos: Clustering
+
+La siguiente fase se centrará en aplicar técnicas de agrupamiento (clustering) sobre los datos preprocesados, siguiendo las indicaciones del `guion.md` y el `PLAN.md`:
+
+- **Algoritmo k-means:**
+    - Aplicar sobre las representaciones Binaria, Frecuencia y TF-IDF (K=4).
+    - Analizar la sensibilidad a diferentes inicializaciones (semillas).
+    - Seleccionar el mejor agrupamiento y guardar asignaciones.
+    - Visualizar clusters usando t-SNE.
+    - Realizar evaluación interna (cohesión, separación) y externa (comparando con categorías reales).
+- **Algoritmo Gaussian Mixture:**
+    - Aplicar sobre la representación TF-IDF (n_components=4).
+    - Evaluar con las mismas métricas que k-means.
+    - Comparar resultados con k-means.
 
 Este informe se actualizará a medida que se completen nuevas fases del proyecto. 

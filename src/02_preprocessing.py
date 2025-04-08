@@ -5,111 +5,96 @@ import os
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-from nltk.stem import PorterStemmer # Added for Stemming
-# from nltk.stem import WordNetLemmatizer # Kept commented
+from nltk.stem import PorterStemmer
+
+from sklearn.pipeline import Pipeline
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 
 # --- Configuration ---
 DATA_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'news_reducido.csv')
-TEXT_COLUMN = 'text' # Column to preprocess
-CLEANED_TEXT_COLUMN = 'cleaned_text' # Intermediate column
-# TOKENIZED_TEXT_COLUMN = 'tokens' # Intermediate column
-FINAL_TOKENS_COLUMN = 'processed_tokens' # Final preprocessed tokens column (stemmed)
-CATEGORY_COLUMN = 'category' # Target column
-SEED = 42 # For reproducibility
+TEXT_COLUMN = 'text'
+CATEGORY_COLUMN = 'category'
+SEED = 42
 
 # --- NLTK Setup ---
-# Downloads should already be done from previous steps
-# Load stopwords once
 stop_words = set(stopwords.words('english'))
-# Instantiate Stemmer
 stemmer = PorterStemmer()
 
-# --- Text Cleaning Functions ---
+# --- Custom Tokenizer Function ---
 
-def clean_text(text):
-    """Applies basic text cleaning steps."""
+def clean_text_minimal(text):
+    """Minimal cleaning: lowercase and remove non-alphanumeric chars (keep spaces)."""
     if not isinstance(text, str):
-        return "" # Handle non-string inputs, including NaN after fillna
-
-    # 1. Convert to lowercase
+        return ""
     text = text.lower()
-
-    # 2. Remove punctuation and numbers
-    text = re.sub(r'[^a-z\s]', '', text)
-
-    # 3. Remove extra whitespace
-    text = re.sub(r'\s+', ' ', text).strip()
-
+    text = re.sub(r'[^a-z\s]', '', text) # Keep letters and spaces
+    text = re.sub(r'\s+', ' ', text).strip() # Consolidate whitespace
     return text
 
-# --- Tokenization, Stopword Removal, and Stemming ---
+def stemming_tokenizer(text):
+    """Cleans, tokenizes, removes stopwords, and stems."""
+    cleaned_text = clean_text_minimal(text)
+    tokens = word_tokenize(cleaned_text)
+    processed_tokens = [stemmer.stem(word) for word in tokens if word not in stop_words]
+    # Return the list of tokens, scikit-learn vectorizers handle joining if needed internally
+    # but passing the list directly is usually fine and expected by tokenizer param
+    return processed_tokens
 
-def process_tokens(text):
-    """Tokenizes, removes stopwords, and applies stemming."""
-    # 1. Tokenize
-    tokens = word_tokenize(text)
-    # 2. Remove stopwords
-    filtered_tokens = [word for word in tokens if word not in stop_words]
-    # 3. Apply stemming
-    stemmed_tokens = [stemmer.stem(word) for word in filtered_tokens]
-    return stemmed_tokens
+# --- Pipeline Creation Functions ---
 
-# --- Main Preprocessing Function (Updated) ---
+def create_binary_pipeline():
+    """Creates a pipeline for Binary representation."""
+    return Pipeline([
+        ('vectorizer', CountVectorizer(tokenizer=stemming_tokenizer, binary=True))
+    ])
 
-def preprocess_data(df):
-    """Loads data and applies cleaning, tokenization, stopword removal, and stemming."""
-    print("--- Starting Preprocessing --- C:\\Users\\jfdg0\\Documents\\Asignaturas\\Minería Web\\mw-2>")
+def create_frequency_pipeline():
+    """Creates a pipeline for Frequency (Count) representation."""
+    return Pipeline([
+        ('vectorizer', CountVectorizer(tokenizer=stemming_tokenizer))
+    ])
 
-    # 1. Handle Missing Values in text column
-    print(f"Handling missing values in '{TEXT_COLUMN}'...")
-    original_missing = df[TEXT_COLUMN].isnull().sum()
-    df[TEXT_COLUMN] = df[TEXT_COLUMN].fillna('')
-    print(f"Replaced {original_missing} missing values with empty strings.")
+def create_tfidf_pipeline():
+    """Creates a pipeline for TF-IDF representation."""
+    return Pipeline([
+        ('vectorizer', TfidfVectorizer(tokenizer=stemming_tokenizer))
+    ])
 
-    # 2. Apply Text Cleaning
-    print(f"Applying text cleaning to '{TEXT_COLUMN}'...")
-    df[CLEANED_TEXT_COLUMN] = df[TEXT_COLUMN].apply(clean_text)
-    print(f"Created '{CLEANED_TEXT_COLUMN}' column.")
-
-    # 3. Tokenize, Remove Stopwords, and Stem
-    print(f"Processing tokens (tokenize, stopwords, stem) from '{CLEANED_TEXT_COLUMN}'...")
-    # This step can take some time
-    df[FINAL_TOKENS_COLUMN] = df[CLEANED_TEXT_COLUMN].apply(process_tokens)
-    print(f"Created '{FINAL_TOKENS_COLUMN}' column.")
-
-    # Display comparison for a sample
-    print("\nSample Text Comparison (Original vs Cleaned vs Processed Tokens):")
-    sample_indices = [0, 1, 2] # Show first few rows
-    for i in sample_indices:
-        if i < len(df):
-            print(f"--- Example {i+1} ---")
-            print(f"Original:    {df[TEXT_COLUMN].iloc[i][:150]}...")
-            print(f"Cleaned:     {df[CLEANED_TEXT_COLUMN].iloc[i][:150]}...")
-            print(f"Tokens:      {df[FINAL_TOKENS_COLUMN].iloc[i][:20]}...") # Show first 20 processed tokens
-        else:
-            print(f"Index {i} out of bounds for sample display.")
-
-    print("\n--- Preprocessing (Cleaning, Tokenization, Stopwords, Stemming) Finished --- C:\\Users\\jfdg0\\Documents\\Asignaturas\\Minería Web\\mw-2>")
-    # Return only the essential columns for further steps
-    return df[[CATEGORY_COLUMN, FINAL_TOKENS_COLUMN]]
-
-# --- Execution Example ---
+# --- Execution Example --- (Demonstrates using one pipeline)
 if __name__ == "__main__":
     print(f"Loading data from {DATA_PATH}...")
     try:
         data_df = pd.read_csv(DATA_PATH)
         print("Data loaded successfully.")
-        # Keep only necessary columns for preprocessing input
-        data_df_subset = data_df[[TEXT_COLUMN, CATEGORY_COLUMN]].copy()
-        processed_df = preprocess_data(data_df_subset)
-        print(f"\nProcessed DataFrame shape: {processed_df.shape}")
-        print("Processed DataFrame head:")
-        print(processed_df.head())
 
-        # Optional: Save the processed data
-        # save_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'news_reducido_processed.pkl')
-        # processed_df.to_pickle(save_path)
-        # print(f"Processed data saved to {save_path}")
+        # Separate features (text data) and target (categories)
+        X = data_df[TEXT_COLUMN].fillna('') # Ensure NaNs are handled before pipeline
+        y = data_df[CATEGORY_COLUMN]
+
+        print(f"\n--- Demonstrating TF-IDF Pipeline --- C:\\Users\\jfdg0\\Documents\\Asignaturas\\Minería Web\\mw-2>")
+
+        # Create the TF-IDF pipeline
+        tfidf_pipeline = create_tfidf_pipeline()
+
+        # Fit the pipeline to the data and transform it
+        # NOTE: fit_transform should ideally be done only on training data in a real scenario
+        # Here, we apply it to all data for demonstration of the pipeline structure.
+        print("Fitting and transforming data with TF-IDF pipeline...")
+        X_tfidf = tfidf_pipeline.fit_transform(X)
+
+        print("\nTransformation complete.")
+        print(f"Shape of TF-IDF matrix: {X_tfidf.shape}")
+        print(f"Type of TF-IDF matrix: {type(X_tfidf)}")
+
+        # Show feature names (vocabulary) - may be large
+        try:
+            feature_names = tfidf_pipeline.named_steps['vectorizer'].get_feature_names_out()
+            print(f"Vocabulary size: {len(feature_names)}")
+            print(f"Sample vocabulary: {feature_names[:10]}... {feature_names[-10:]}")
+        except Exception as e:
+            print(f"Could not retrieve feature names: {e}")
+
+        print("\n--- Pipeline demonstration finished --- C:\\Users\\jfdg0\\Documents\\Asignaturas\\Minería Web\\mw-2>")
 
     except FileNotFoundError:
         print(f"Error: Dataset file not found at {DATA_PATH}")
