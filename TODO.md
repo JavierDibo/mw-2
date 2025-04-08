@@ -10,13 +10,13 @@
 - [x] Create subdirectories
 - [x] Create initial documentation files
 
-## Data Loading and Exploration [ ]
-- [ ] Obtain reduced dataset
-- [ ] Create data loading script
-- [ ] Perform initial EDA
-- [ ] Document dataset characteristics
-- [ ] Decide on text fields to use
-- [ ] Document rationale for text field selection
+## Data Loading and Exploration [x]
+- [x] Obtain reduced dataset
+- [x] Create data loading script
+- [x] Perform initial EDA
+- [x] Document dataset characteristics
+- [x] Decide on text fields to use
+- [x] Document rationale for text field selection
 
 ## Preprocessing [ ]
 - [ ] Implement text cleaning functions
