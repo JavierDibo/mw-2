@@ -2,11 +2,11 @@
 
 ## Project Setup [x]
 - [x] Initialize Git repository
-- [x] Create project directory structure
-- [x] Set up Python virtual environment
-- [x] Set up .gitignore and requirements.txt
-- [x] Install required libraries
-- [x] Create subdirectories
+- [ ] Create project directory structure
+- [ ] Set up Python virtual environment
+- [ ] Set up .gitignore and requirements.txt
+- [ ] Install required libraries
+- [ ] Create subdirectories
 - [ ] Create initial documentation files
 
 ## Data Loading and Exploration [ ]
