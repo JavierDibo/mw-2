@@ -86,16 +86,19 @@
     - p: [1, 2]
   - Record mean cross-validated accuracy
   - Identify best parameters
+  - **Save best k-NN pipeline model using joblib**
   - Document results
 
 ### 5.2 Naïve Bayes Classification
+- Implement in separate script (`src/06_naive_bayes_classification.py`)
 - For each representation:
-  - Test both MultinomialNB and GaussianNB
+  - Test both MultinomialNB and GaussianNB (handle dense data for GaussianNB)
   - Record mean cross-validated accuracy
   - Compare performance between variants
   - Document results
 
 ### 5.3 Overall Comparison
+- Combine results from k-NN (`05_...`) and Naive Bayes (`06_...`)
 - Create summary table of best results
 - Compare algorithms and representations
 - Discuss trade-offs:

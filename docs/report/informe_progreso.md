@@ -82,13 +82,56 @@ Siguiendo las indicaciones del guion y abordando el `MemoryError` inicial, se ej
     - Basándose en las **métricas externas** (que son comparables), GMM aplicado sobre los datos TF-IDF reducidos con SVD (ARI=0.736) **superó notablemente** a K-Means aplicado sobre los datos TF-IDF completos (ARI=0.330). Esto sugiere que la combinación de SVD (para manejar la dimensionalidad) y GMM (con su mayor flexibilidad para modelar clusters) fue más efectiva para capturar la estructura de las categorías reales en este caso.
 - **Guardado de Asignaciones:** Las asignaciones de GMM se guardaron en `results/gmm_assignments_TF-IDF_SVD.csv`.
 
-### 6. Próximos Pasos: Clasificación
+### 6. Clasificación k-NN (Completado)
 
-Con la sección de clustering completada, la siguiente fase se centrará en los experimentos de clasificación, según se detalla en `docs/PLAN.md` y `docs/guion.md`:
+Se ha completado la ejecución y evaluación del algoritmo k-NN (`KNeighborsClassifier`) utilizando el script `src/05_classification.py`. Se usó validación cruzada estratificada de 5 folds y `GridSearchCV` para encontrar los mejores hiperparámetros (`n_neighbors`, `weights`, `p`) para cada representación vectorial.
 
-- **Algoritmos:** k-NN (`KNeighborsClassifier`) y Naïve Bayes (`GaussianNB`, `MultinomialNB`).
-- **Representaciones:** Binaria, Frecuencia, TF-IDF (cuando sea aplicable).
-- **Evaluación:** Validación Cruzada Estratificada de 5 folds (`StratifiedKFold`).
-- **Análisis:** Comparar rendimiento (precisión, etc.), parámetros óptimos y eficiencia computacional.
+- **Representaciones Probadas:** Binaria, Frecuencia, TF-IDF.
+- **Labels:** Se utilizó `LabelEncoder` para convertir las categorías de texto a enteros, resolviendo errores previos.
+- **Resultados y Parámetros Óptimos (`accuracy` media en 5-fold CV):
+    - **Binaria:** 0.3081 (n_neighbors=3, p=1, weights=distance)
+    - **Frecuencia:** **0.6239** (n_neighbors=3, p=2, weights=distance)
+    - **TF-IDF:** 0.3297 (n_neighbors=3, p=2, weights=distance)
+- **Análisis Preliminar k-NN:** La representación de **Frecuencia** obtuvo el mejor rendimiento para k-NN con una precisión del 62.4%. Las representaciones Binaria y TF-IDF mostraron resultados considerablemente más bajos para este algoritmo.
+- **Modelos Guardados:** Los mejores pipelines (vectorizador + clasificador k-NN) para cada representación, junto con el `LabelEncoder`, se han guardado en el directorio `results/models/` utilizando `joblib` para su posible uso futuro.
+
+### 7. Clasificación Naive Bayes (Completado)
+
+Se ejecutaron los experimentos de clasificación con Naive Bayes utilizando el script `src/06_naive_bayes_classification.py`. Se probó `MultinomialNB` y `GaussianNB` con validación cruzada estratificada de 5 folds.
+
+- **Representaciones Probadas:** Binaria, Frecuencia, TF-IDF.
+- **`GaussianNB`:** Requiere datos densos. Se incluyó un paso de densificación en el pipeline. Se ejecutó con `n_jobs=2` para mitigar problemas de memoria, lo cual funcionó.
+- **Resultados (`accuracy` media en 5-fold CV):
+    - **Binaria:**
+        - `MultinomialNB`: **0.9168**
+        - `GaussianNB`: 0.8486
+    - **Frecuencia:**
+        - `MultinomialNB`: **0.9359**
+        - `GaussianNB`: 0.8212
+    - **TF-IDF:**
+        - `MultinomialNB`: **0.9225**
+        - `GaussianNB`: 0.8054
+- **Análisis Naive Bayes:** `MultinomialNB` superó consistentemente a `GaussianNB` en todas las representaciones. El mejor rendimiento general se obtuvo con `MultinomialNB` y la representación de **Frecuencia** (93.6%). Los tiempos de ejecución fueron notablemente más rápidos que los de la búsqueda de hiperparámetros de k-NN.
+
+### 8. Comparación k-NN vs Naive Bayes y Próximos Pasos
+
+- **Comparación General Detallada:**
+    - **Mejores Resultados:**
+        - Mejor k-NN: Frecuencia, Accuracy = 0.6239 (Params: n=3, p=2, weights=distance)
+        - Mejor Naive Bayes: Frecuencia (MultinomialNB), Accuracy = **0.9359**
+    - **Superioridad de Naive Bayes (MultinomialNB):** `MultinomialNB` demostró ser un clasificador significativamente superior a k-NN para esta tarea, logrando una precisión mucho mayor (~93.6% vs ~62.4%). Esto se atribuye principalmente a:
+        - *Manejo de Alta Dimensionalidad y Dispersión:* Naive Bayes maneja eficientemente el gran número de características (palabras) y la dispersión inherente de los datos textuales mediante su modelo probabilístico, mientras que k-NN sufre de la "maldición de la dimensionalidad" donde las distancias se vuelven menos significativas.
+        - *Idoneidad del Modelo:* El modelo generativo de `MultinomialNB` basado en la frecuencia de palabras parece capturar mejor la señal temática que el enfoque basado en distancia de k-NN.
+    - **Importancia de la Representación:**
+        - *Frecuencia como Ganadora:* La representación de frecuencia simple (conteo de palabras tras preprocesamiento) proporcionó la mejor base para ambos algoritmos, aunque la diferencia fue mucho más pronunciada para `MultinomialNB`.
+        - *TF-IDF:* Funcionó bien con `MultinomialNB` (92.3%) pero mal con k-NN (33.0%), posiblemente porque la normalización TF-IDF no mejoró la separabilidad por distancia para k-NN en este espacio de alta dimensión.
+        - *Binaria:* Perdió demasiada información al ignorar la frecuencia, resultando en el peor o casi peor rendimiento para ambos clasificadores.
+    - **Variantes de Naive Bayes:** `GaussianNB` tuvo un rendimiento notablemente inferior (~80-85%) debido a que su asunción de normalidad gaussiana para las características no se cumple en datos textuales. Además, la necesidad de densificar los datos aumentó su coste computacional sin mejorar su adecuación.
+    - **Parámetros de k-NN:** El mejor k-NN consistentemente prefirió `k=3` y `weights='distance'`, sugiriendo que en este espacio de alta dimensión, solo los vecinos más inmediatos y cercanos proporcionan información fiable.
+    - **Eficiencia Computacional:** Naive Bayes fue órdenes de magnitud más rápido de entrenar y evaluar que k-NN con `GridSearchCV`, destacando `MultinomialNB` por su eficiencia.
+    - **Conclusión:** `MultinomialNB` con representación de **Frecuencia** es la combinación óptima de precisión y eficiencia para clasificar estas noticias con el preprocesamiento actual.
+- **Próximos Pasos:**
+    - **Documentación:** Expandir el análisis en la memoria final (PDF), incluyendo tablas de comparación detalladas y discusión de trade-offs.
+    - **Competición Kaggle:** Abordar la competición utilizando el conjunto de datos completo, posiblemente explorando algoritmos más avanzados o técnicas de preprocesamiento/ingeniería de características adicionales basadas en estos hallazgos.
 
 Este informe se actualizará a medida que se completen nuevas fases del proyecto. 

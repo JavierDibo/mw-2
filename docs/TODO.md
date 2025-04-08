@@ -52,21 +52,24 @@
 
 ## Classification [ ]
 ### k-NN
-- [ ] Implement 5-fold Stratified Cross-Validation
-- [ ] Create parameter grid for k-NN
-- [ ] Test different combinations:
-  - [ ] Binary representation
-  - [ ] Frequency representation
-  - [ ] TF-IDF representation
-- [ ] Document results
+- [x] Implement 5-fold Stratified Cross-Validation (in `05_...`)
+- [x] Create parameter grid for k-NN (in `05_...`)
+- [x] Test different combinations (in `05_...`):
+  - [x] Binary representation
+  - [x] Frequency representation
+  - [x] TF-IDF representation
+- [x] Save best k-NN models (joblib) (in `05_...`)
+- [x] Document results (from `05_...`)
 
 ### Naïve Bayes
-- [ ] Implement MultinomialNB
-- [ ] Implement GaussianNB
-- [ ] Test both variants on all representations
-- [ ] Document results
+- [x] Create Naive Bayes script (`06_naive_bayes_classification.py`)
+- [x] Implement MultinomialNB (in `06_...`)
+- [x] Implement GaussianNB (in `06_...`, incl. dense handling)
+- [x] Test both variants on all representations (in `06_...`)
+- [x] Document results (from `06_...`)
 
 ### Comparison
+- [ ] Combine results from `05_...` and `06_...`
 - [ ] Create summary tables
 - [ ] Analyze performance differences
 - [ ] Document trade-offs
