@@ -16,6 +16,8 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import silhouette_score, davies_bouldin_score
 from sklearn.metrics import adjusted_rand_score, homogeneity_completeness_v_measure
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.mixture import GaussianMixture
+from sklearn.decomposition import TruncatedSVD
 
 # --- Configuration copied from preprocessing.py and local ---
 TEXT_COLUMN = 'text'
@@ -29,6 +31,9 @@ RESULTS_PATH = os.path.join(BASE_DIR, '..', 'results')
 ASSIGNMENTS_FILE_TPL = os.path.join(RESULTS_PATH, 'kmeans_assignments_{}.csv')
 TSNE_PLOT_FILE_TPL = os.path.join(RESULTS_PATH, 'tsne_kmeans_{}.png')
 TSNE_PLOT_TRUE_FILE_TPL = os.path.join(RESULTS_PATH, 'tsne_true_categories_{}.png')
+# Add filenames for GMM results
+GMM_ASSIGNMENTS_FILE_TPL = os.path.join(RESULTS_PATH, 'gmm_assignments_{}.csv') # Optional, but good practice
+SVD_N_COMPONENTS = 100 # Number of components for TruncatedSVD
 
 # Semillas para probar la sensibilidad de K-Means
 RANDOM_STATES_TO_TEST = [0, SEED, 123, 2024, 999]
@@ -159,7 +164,7 @@ def visualize_tsne(X_vec, labels_pred, labels_true, representation_name, filenam
 
 # --- Main Execution ---
 if __name__ == "__main__":
-    print("--- Starting K-Means Clustering Experiment --- C:\\Users\\jfdg0\\Documents\\Asignaturas\\Minería Web\\mw-2\\src>") # Adjusted path indicator
+    print("--- Starting Clustering Experiment ---") # Simplified title
 
     # 1. Load Data
     print(f"\n[1] Loading data from {DATA_PATH}...")
@@ -223,12 +228,16 @@ if __name__ == "__main__":
                 print(f"      Error during KMeans fit/evaluation for seed {state}: {e}")
                 sensitivity_results[state] = None # Mark as errored
 
-        # Discuss sensitivity (simple print)
+        # Discuss sensitivity
         print("  \n  Sensitivity Analysis Summary:")
         aris = {s: r['ari'] for s, r in sensitivity_results.items() if r}
         if aris:
              print(f"    Adjusted Rand Index varied across seeds: {aris}")
-             print("    -> K-Means results depend on initial centroid positions.")
+             # Explanation for K-Means Sensitivity
+             print("    -> Theoretical Explanation: K-Means is an iterative algorithm that aims to minimize the within-cluster sum of squares.")
+             print("       It starts with an initial guess for the cluster centroids (either randomly or using a strategy like k-means++).")
+             print("       The algorithm converges to a local minimum, which depends heavily on the starting positions.")
+             print("       Different initializations can lead to different local minima and thus different final cluster assignments and performance.")
         else:
              print("    Could not perform sensitivity analysis due to errors.")
 
@@ -250,46 +259,129 @@ if __name__ == "__main__":
 
         # d) Save Assignments
         print(f"  \n  d) Saving cluster assignments...")
-        assignments_df = pd.DataFrame({
-            'document_index': X_text.index,
-            'true_category': y_categories, # Original category names
-            'kmeans_cluster': labels_best
-        })
-        assignments_file = ASSIGNMENTS_FILE_TPL.format(name)
         try:
+            assignments_df = pd.DataFrame({'document_index': X_text.index, 'cluster': labels_best})
+            assignments_file = ASSIGNMENTS_FILE_TPL.format(name)
             assignments_df.to_csv(assignments_file, index=False)
             print(f"    - Assignments saved to: {assignments_file}")
             all_results[name]['assignments_file'] = assignments_file
         except Exception as e:
-            print(f"    - Error saving assignments: {e}")
+            print(f"    Error saving assignments for {name}: {e}")
+            all_results[name]['assignments_file'] = "Error"
 
-        # e) Visualize with t-SNE
+        # e) Generate Visualizations
         print(f"  \n  e) Generating t-SNE visualizations...")
-        tsne_file = TSNE_PLOT_FILE_TPL.format(name)
-        tsne_true_file = TSNE_PLOT_TRUE_FILE_TPL.format(name)
         try:
-            # Use original category names for the true label plot
-            visualize_tsne(X_vec, labels_best, y_categories, name, tsne_file, tsne_true_file)
-            all_results[name]['tsne_plot_pred'] = tsne_file
-            all_results[name]['tsne_plot_true'] = tsne_true_file
+            tsne_pred_file = TSNE_PLOT_FILE_TPL.format(name)
+            tsne_true_file = TSNE_PLOT_TRUE_FILE_TPL.format(name)
+            # Check if data is too large or likely to cause memory issues for t-SNE visualization
+            if X_vec.shape[0] * X_vec.shape[1] > 1e8: # Heuristic limit
+                 print("    Skipping t-SNE visualization due to potentially large data size.")
+                 all_results[name]['tsne_plots'] = "Skipped (Large Data)"
+            else:
+                 visualize_tsne(X_vec, labels_best, y_categories, name, tsne_pred_file, tsne_true_file)
+                 all_results[name]['tsne_plots'] = (tsne_pred_file, tsne_true_file)
+        except MemoryError:
+             print("    Error: MemoryError during t-SNE calculation. Skipping visualization.")
+             all_results[name]['tsne_plots'] = "Error (Memory)"
         except Exception as e:
-            print(f"    - Error during t-SNE visualization: {e}")
+             print(f"    Error during t-SNE visualization for {name}: {e}")
+             all_results[name]['tsne_plots'] = f"Error ({type(e).__name__})"
 
-    # 4. Final Summary (Basic)
-    print("\n[3] K-Means Experiment Summary:")
-    for name, results_dict in all_results.items():
-        print(f"\n--- Results for: {name} ---")
-        if 'metrics' in results_dict:
-            print("  Metrics (Seed=42):")
-            for metric, value in results_dict['metrics'].items():
-                # Handle potential error values
-                value_str = f"{value:.4f}" if isinstance(value, (int, float)) and value != -999 else str(value)
-                print(f"    - {metric.replace('_', ' ').capitalize()}: {value_str}")
+    # --- Section 4: Gaussian Mixture Model (Only for TF-IDF with SVD) ---
+    print(f"\n[3] Running Gaussian Mixture Model (GMM) for TF-IDF representation with TruncatedSVD (n_components={SVD_N_COMPONENTS})...")
+    gmm_results = {}
+    if 'TF-IDF' in vectorizers_to_run:
+        tfidf_vectorizer = vectorizers_to_run['TF-IDF']
+        try:
+            # Re-vectorize or reuse TF-IDF data
+            if 'TF-IDF' not in all_results or 'metrics' not in all_results['TF-IDF']:
+                 print("  TF-IDF K-Means results not available, re-vectorizing for GMM...")
+                 X_tfidf_vec = tfidf_vectorizer.fit_transform(X_text)
+            else:
+                 print("  Reusing TF-IDF vectorized data from K-Means step.")
+                 X_tfidf_vec = X_vec # Assumes TF-IDF was the last one processed
+
+            # Apply TruncatedSVD
+            print(f"  Applying TruncatedSVD with n_components={SVD_N_COMPONENTS}...")
+            svd = TruncatedSVD(n_components=SVD_N_COMPONENTS, random_state=SEED)
+            X_tfidf_svd = svd.fit_transform(X_tfidf_vec)
+            print(f"  Dimensionality reduced to: {X_tfidf_svd.shape}")
+
+            # Fit GMM on reduced data
+            print(f"  Fitting GMM with n_components={K} and random_state={SEED} on SVD data...")
+            gmm = GaussianMixture(n_components=K, random_state=SEED, covariance_type='full')
+            # GMM needs dense data, SVD output is already dense
+            gmm.fit(X_tfidf_svd)
+            labels_gmm = gmm.predict(X_tfidf_svd)
+
+            # Evaluate GMM
+            print(f"  \n  Evaluating GMM run (seed={SEED}) on SVD data...")
+            # Note: Internal metrics (Silhouette, DB) are calculated on X_tfidf_svd
+            # External metrics (ARI, etc.) use original y_true and are comparable to K-Means
+            gmm_metrics = evaluate_clustering(X_tfidf_svd, labels_gmm, y_true, "TF-IDF (SVD + GMM)", f"SEED={SEED}")
+            gmm_results = {'metrics': gmm_metrics}
+
+            # Save GMM Assignments
+            print(f"  \n  Saving GMM cluster assignments (from SVD data)...")
+            try:
+                gmm_assignments_df = pd.DataFrame({'document_index': X_text.index, 'cluster': labels_gmm})
+                # Update filename to reflect SVD use
+                gmm_assignments_file = GMM_ASSIGNMENTS_FILE_TPL.format("TF-IDF_SVD")
+                gmm_assignments_df.to_csv(gmm_assignments_file, index=False)
+                print(f"    - GMM Assignments saved to: {gmm_assignments_file}")
+                gmm_results['assignments_file'] = gmm_assignments_file
+            except Exception as e:
+                print(f"    Error saving GMM assignments: {e}")
+                gmm_results['assignments_file'] = "Error"
+
+        except MemoryError:
+            print("  Error: MemoryError during GMM fitting/evaluation for TF-IDF. Skipping.")
+            gmm_results = {'metrics': "Error (Memory)", 'assignments_file': "Skipped"}
+        except Exception as e:
+            print(f"  Error during GMM processing for TF-IDF: {e}")
+            gmm_results = {'metrics': f"Error ({type(e).__name__})", 'assignments_file': "Skipped"}
+    else:
+        print("  TF-IDF representation not processed, skipping GMM.")
+
+    # --- Section 5: Final Summary ---
+    print(f"\n[{'4' if 'TF-IDF' in vectorizers_to_run else '3'}] Clustering Experiment Summary:") # Adjust section number
+
+    for name, results in all_results.items():
+        print(f"\n--- Results for K-Means: {name} ---")
+        if 'metrics' in results and isinstance(results['metrics'], dict):
+            metrics = results['metrics']
+            print(f"  Metrics (Seed={SEED}):")
+            print(f"    - Silhouette: {metrics.get('silhouette', 'N/A'):.4f}")
+            print(f"    - Davies bouldin: {metrics.get('davies_bouldin', 'N/A'):.4f}")
+            print(f"    - Ari: {metrics.get('ari', 'N/A'):.4f}")
+            print(f"    - Homogeneity: {metrics.get('homogeneity', 'N/A'):.4f}")
+            print(f"    - Completeness: {metrics.get('completeness', 'N/A'):.4f}")
+            print(f"    - V measure: {metrics.get('v_measure', 'N/A'):.4f}")
+            print(f"  Assignments File: {results.get('assignments_file', 'N/A')}")
+            if 'tsne_plots' in results:
+                 if isinstance(results['tsne_plots'], tuple):
+                      print(f"  t-SNE Plots: {results['tsne_plots'][0]} (predicted), {results['tsne_plots'][1]} (true)")
+                 else:
+                      print(f"  t-SNE Plots: {results['tsne_plots']}") # Print error/skipped message
         else:
-             print("  Metrics: Not available due to errors.")
-        if 'assignments_file' in results_dict:
-             print(f"  Assignments File: {results_dict['assignments_file']}")
-        if 'tsne_plot_pred' in results_dict:
-             print(f"  t-SNE Plots: {results_dict['tsne_plot_pred']} (predicted), {results_dict['tsne_plot_true']} (true)")
+            print("  Metrics: Not available due to errors.")
 
-    print(f"\n--- K-Means Clustering Experiment Finished --- C:\\Users\\jfdg0\\Documents\\Asignaturas\\Minería Web\\mw-2\\src>") # Adjusted path indicator 
+    # Add GMM results to summary if available
+    if gmm_results:
+        print(f"\n--- Results for GMM: TF-IDF (with SVD n={SVD_N_COMPONENTS}) ---") # Updated title
+        if 'metrics' in gmm_results and isinstance(gmm_results['metrics'], dict):
+            metrics = gmm_results['metrics']
+            print(f"  Metrics (Seed={SEED}):")
+            print(f"    - Silhouette (on SVD data): {metrics.get('silhouette', 'N/A'):.4f}") # Clarify metric context
+            print(f"    - Davies bouldin (on SVD data): {metrics.get('davies_bouldin', 'N/A'):.4f}") # Clarify metric context
+            print(f"    - Ari: {metrics.get('ari', 'N/A'):.4f}")
+            print(f"    - Homogeneity: {metrics.get('homogeneity', 'N/A'):.4f}")
+            print(f"    - Completeness: {metrics.get('completeness', 'N/A'):.4f}")
+            print(f"    - V measure: {metrics.get('v_measure', 'N/A'):.4f}")
+            print(f"  Assignments File: {gmm_results.get('assignments_file', 'N/A')}")
+        else:
+            print(f"  Metrics: {gmm_results.get('metrics', 'Not available due to errors.')}")
+            print(f"  Assignments File: {gmm_results.get('assignments_file', 'N/A')}")
+
+    print(f"\n--- Clustering Experiment Finished ---") 

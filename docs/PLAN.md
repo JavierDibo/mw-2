@@ -67,8 +67,10 @@
 
 ### 4.2 Gaussian Mixture (n_components=4)
 - Apply to TF-IDF representation only
-- Evaluate using same metrics as k-means
-- Compare with k-means results
+- **Apply TruncatedSVD (e.g., n_components=100) before GMM to reduce dimensionality**
+- Fit GMM on the reduced TF-IDF data
+- Evaluate using same metrics as k-means (note internal metrics comparability)
+- Compare with k-means results (based on external metrics)
 - Document differences in cluster characteristics
 
 ## 5. Classification Experiments

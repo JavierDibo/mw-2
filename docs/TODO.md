@@ -32,20 +32,21 @@
 
 ## Clustering [ ]
 ### k-means
-- [ ] Implement k-means with different random states
-- [ ] Create visualization functions
-- [ ] Implement internal evaluation metrics
-- [ ] Implement external evaluation metrics
-- [ ] Document results for each representation:
-  - [ ] Binary
-  - [ ] Frequency
-  - [ ] TF-IDF
+- [x] Implement k-means with different random states
+- [x] Create visualization functions
+- [x] Implement internal evaluation metrics
+- [x] Implement external evaluation metrics
+- [x] Document results for each representation:
+  - [x] Binary
+  - [x] Frequency
+  - [x] TF-IDF
 
 ### Gaussian Mixture
-- [ ] Implement Gaussian Mixture on TF-IDF
-- [ ] Evaluate using same metrics as k-means
-- [ ] Compare with k-means results
-- [ ] Document findings
+- [x] Implement Gaussian Mixture on TF-IDF
+- [x] Add TruncatedSVD step for TF-IDF before GMM
+- [x] Evaluate using same metrics as k-means
+- [x] Compare with k-means results
+- [x] Document findings
 
 ## Classification [ ]
 ### k-NN
