@@ -66,8 +66,8 @@ Se ha completado la ejecución y evaluación del algoritmo K-Means (con K=4) sob
 Siguiendo las indicaciones del guion y abordando el `MemoryError` inicial, se ejecutó el algoritmo Gaussian Mixture Model (GMM) en el script `src/03_kmeans_clustering.py`:
 
 - **Representación:** Se utilizó exclusivamente la representación TF-IDF.
-- **Reducción de Dimensionalidad:** Se aplicó `TruncatedSVD` con `n_components=100` a la matriz TF-IDF antes de GMM para evitar problemas de memoria. La dimensionalidad se redujo de ~147k a 100.
-- **Ejecución GMM:** Se ajustó `GaussianMixture` con `n_components=4` y `random_state=SEED` sobre los datos reducidos por SVD.
+- **Reducción de Dimensionalidad:** Se aplicó `TruncatedSVD` a la matriz TF-IDF antes de GMM para evitar problemas de memoria. Se realizó un *tuning* previo (ver `src/04_gmm_svd_param_tuning.py`) probando `n_components` en [50, 100, 150, 200, 250]. **El valor `n_components=100` obtuvo los mejores resultados** (ARI=0.736, V-measure=0.694) y fue el seleccionado. La dimensionalidad final fue (10000, 100).
+- **Ejecución GMM:** Se ajustó `GaussianMixture` con `n_components=4` (según guion) y `random_state=SEED` sobre los datos reducidos por SVD.
 - **Evaluación:**
     - Se calcularon las métricas internas (Silhouette, Davies-Bouldin) sobre los datos **reducidos por SVD**.
     - Se calcularon las métricas externas (ARI, Homogeneidad, Completitud, V-measure) comparando las etiquetas predichas por GMM con las categorías reales.

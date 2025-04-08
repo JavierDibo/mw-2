@@ -43,7 +43,9 @@
 
 ### Gaussian Mixture
 - [x] Implement Gaussian Mixture on TF-IDF
-- [x] Add TruncatedSVD step for TF-IDF before GMM
+- [x] Run SVD n_components tuning script (`04_gmm_svd_param_tuning.py`)
+- [x] Update main script (`03_...`) with best SVD n_components (No change needed, 100 confirmed)
+- [x] Add TruncatedSVD step for TF-IDF before GMM (in main script)
 - [x] Evaluate using same metrics as k-means
 - [x] Compare with k-means results
 - [x] Document findings

@@ -66,8 +66,9 @@
   - Document and analyze results
 
 ### 4.2 Gaussian Mixture (n_components=4)
+- **Run hyperparameter tuning for TruncatedSVD n_components (e.g., `src/04_gmm_svd_param_tuning.py`)**
 - Apply to TF-IDF representation only
-- **Apply TruncatedSVD (e.g., n_components=100) before GMM to reduce dimensionality**
+- **Apply TruncatedSVD with *best* n_components found before GMM**
 - Fit GMM on the reduced TF-IDF data
 - Evaluate using same metrics as k-means (note internal metrics comparability)
 - Compare with k-means results (based on external metrics)
