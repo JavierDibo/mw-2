@@ -19,10 +19,10 @@
 - [x] Document rationale for text field selection
 
 ## Preprocessing [ ]
-- [ ] Implement text cleaning functions
-- [ ] Create tokenization pipeline
-- [ ] Implement stopword removal
-- [ ] Implement stemming/lemmatization
+- [x] Implement text cleaning functions
+- [x] Create tokenization pipeline
+- [x] Implement stopword removal
+- [x] Implement stemming/lemmatization
 - [ ] Create vectorization functions:
   - [ ] Binary
   - [ ] Frequency
